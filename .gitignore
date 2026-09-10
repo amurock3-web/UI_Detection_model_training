@@ -1,0 +1,32 @@
+# ── CLIENT DATA — never commit ───────────────────────────────
+data/
+ds/
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.webp
+
+# ── Training artifacts ───────────────────────────────────────
+runs/
+wandb/
+*.pt
+*.onnx
+*.engine
+!models/**/model_card.json
+!models/**/classes_16.txt
+!models/**/gt_detections.json
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# ── OS / editor ──────────────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/

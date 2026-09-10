@@ -1,0 +1,30 @@
+# Training configuration — UI_Detection_model_training
+#
+# UI screenshots are not natural photographs. Several ultralytics defaults
+# actively hurt here. Every override below carries its reason.
+
+model: yolov8s.pt        # yolo11s.pt is the alternative to sweep in Phase 10
+epochs: 200
+imgsz: 1280              # UI text is small; resolution matters more than depth
+batch: 8                 # fits a Colab T4 (16GB) at imgsz 1280
+patience: 50
+device: 0
+workers: 2
+seed: 42
+
+augmentation:
+  fliplr: 0.0            # mirroring puts a left nav bar on the right — wrong label
+  flipud: 0.0            # UI is never upside down
+  degrees: 0.0           # UI is axis-aligned
+  perspective: 0.0       # no camera geometry involved
+  shear: 0.0
+  hsv_h: 0.0             # colour is diagnostic signal; do not teach invariance
+  hsv_s: 0.2             # mild saturation jitter only
+  hsv_v: 0.3             # brightness varies across devices — this one is real
+  mosaic: 0.3            # mosaic invents impossible layouts; keep low
+  mixup: 0.0             # blended UIs are meaningless
+  scale: 0.3             # real devices differ in resolution — keep this
+  translate: 0.1
+
+# Fallback ladder if VRAM is tight (GTX 1070, 8GB):
+#   1. batch: 4  →  2. imgsz: 640  →  3. freeze: 10  (head-only training)
