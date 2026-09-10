@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "data" / "renamed"
 OUT = ROOT / "data" / "labels_16"
 CLASSES_OUT = ROOT / "config" / "classes_16.txt"
+CORRECTIONS = ROOT / "config" / "label_corrections.yaml"
 
 # The contract with the consuming repo — see CLAUDE.md. Do not reorder.
 CLASSES_16 = [
@@ -61,30 +62,80 @@ def build_id_map(classes_22):
             for old_id, name in enumerate(classes_22)}
 
 
+def load_corrections():
+    """stem -> {line number: corrected 16-class id}. Absent file means none."""
+    if not CORRECTIONS.exists():
+        return {}
+    import re
+    import yaml
+    text = CORRECTIONS.read_text()
+
+    # YAML lets a repeated key win silently, which would drop every correction
+    # in the earlier block for that image without a word.
+    keys = re.findall(r"^([A-Za-z0-9_]+):", text, re.M)
+    dupes = sorted({k for k in keys if keys.count(k) > 1})
+    if dupes:
+        raise ValueError(f"{CORRECTIONS.name}: {dupes} appear more than once; "
+                         "YAML keeps only the last, so merge them into one entry")
+
+    raw = yaml.safe_load(text) or {}
+    out = {}
+    for stem, fixes in raw.items():
+        out[stem] = {}
+        for lineno, name in (fixes or {}).items():
+            if name not in NAME_TO_ID_16:
+                raise KeyError(f"{CORRECTIONS.name}: {stem}:{lineno} names "
+                               f"'{name}', which is not one of the 16 classes")
+            out[stem][int(lineno)] = NAME_TO_ID_16[name]
+    return out
+
+
 def main():
     classes_22 = [c.strip() for c in
                   (SRC / "classes_22.txt").read_text().splitlines() if c.strip()]
     id_map = build_id_map(classes_22)
+    corrections = load_corrections()
 
     OUT.mkdir(parents=True, exist_ok=True)
-    before, after = Counter(), Counter()
+    before, after, mapped = Counter(), Counter(), Counter()
     files = sorted((SRC / "labels").glob("*.txt"))
+    applied, unused = [], dict(corrections)
 
     for path in files:
+        fixes = corrections.get(path.stem, {})
+        unused.pop(path.stem, None)
+        seen_lines = set()
         lines = []
         for lineno, line in enumerate(path.read_text().splitlines(), 1):
             if not line.strip():
                 continue
+            seen_lines.add(lineno)
             cid, rest = line.split(maxsplit=1)
             old = int(cid)
             if old not in id_map:
                 raise ValueError(f"{path.name}:{lineno} class id {old} "
                                  f"outside classes_22.txt (0-{len(classes_22)-1})")
             new = id_map[old]
+            mapped[CLASSES_16[new]] += 1        # pre-correction, for the merge check
+            if lineno in fixes and fixes[lineno] != new:
+                applied.append((path.stem, lineno, CLASSES_16[new],
+                                CLASSES_16[fixes[lineno]]))
+                new = fixes[lineno]
             before[classes_22[old]] += 1
             after[CLASSES_16[new]] += 1
             lines.append(f"{new} {rest}")
+
+        # a correction aimed at a line that does not exist is a silent no-op,
+        # which is exactly how a stale corrections file rots unnoticed
+        missing = sorted(set(fixes) - seen_lines)
+        if missing:
+            raise ValueError(f"{CORRECTIONS.name}: {path.stem} has no line(s) "
+                             f"{missing} - the label file has {len(seen_lines)}")
         (OUT / path.name).write_text("\n".join(lines) + "\n" if lines else "")
+
+    if unused:
+        raise ValueError(f"{CORRECTIONS.name}: no label file for "
+                         f"{sorted(unused)} - stale correction entry")
 
     CLASSES_OUT.write_text("\n".join(CLASSES_16) + "\n")
 
@@ -98,10 +149,19 @@ def main():
     for new_id, new_name in enumerate(CLASSES_16):
         sources = [c for c in classes_22 if MAPPING[c] == new_name]
         arithmetic = " + ".join(f"{c} {before[c]}" for c in sources)
-        print(f"{new_id:>6}  {new_name:<16}{after[new_name]:>6}   = {arithmetic}")
-        assert after[new_name] == sum(before[c] for c in sources), new_name
+        delta = after[new_name] - mapped[new_name]
+        note = f"   then {delta:+d} from corrections" if delta else ""
+        print(f"{new_id:>6}  {new_name:<16}{mapped[new_name]:>6}   = {arithmetic}{note}")
+        assert mapped[new_name] == sum(before[c] for c in sources), new_name
 
     assert sum(before.values()) == sum(after.values()), "instances lost in remap"
+
+    if applied:
+        print(f"\nCorrections applied from {CORRECTIONS.name}: {len(applied)}")
+        moved = Counter((was, now) for _, _, was, now in applied)
+        for (was, now), n in moved.most_common():
+            print(f"   {n:>3}x  {was:<16} -> {now}")
+        print("   (the merge table above shows counts BEFORE these corrections)")
     print(f"\nWrote {len(files)} files to {OUT}")
     print(f"Wrote {CLASSES_OUT}")
 

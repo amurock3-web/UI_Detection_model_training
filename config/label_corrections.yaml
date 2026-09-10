@@ -1,0 +1,47 @@
+# Label corrections applied by scripts/remap_labels.py AFTER the 22->16 mapping.
+#
+# CLAUDE.md forbids re-annotating the original Label Studio files in place, so
+# corrections live here instead: the originals stay untouched, every change is
+# reviewable in one diff, and re-running the remap reproduces the same result.
+#
+# Keys are the renamed stem; values map a 1-based line number in that label
+# file to the corrected 16-class name. Line numbers are stable because no
+# source label file contains blank lines (checked).
+#
+# Every entry below was confirmed by eye on the actual screenshot, not inferred
+# from box geometry alone.
+
+# --- Boxes labelled section_title that are not headings -------------------
+# A real heading ("Popular Actress") is 8-13x wider than tall. These 21 are
+# posters, channel tiles, or cards clipped by the screen edge. The trained
+# model already calls them content_card with high confidence and is penalised
+# for being right.
+ss024: {3: content_card}
+ss025: {8: content_card}
+ss027: {4: content_card, 29: content_card}
+ss029: {16: content_card}
+ss031: {15: icon}            # tiny glyph in a banner, not a card
+ss034: {22: content_card}
+ss036: {3: content_card, 4: content_card, 5: content_card}
+ss057: {17: content_card, 21: content_card}
+ss062: {5: content_card}
+ss064: {12: content_card, 13: content_card, 14: content_card}
+ss071: {4: content_card}
+ss080: {7: content_card, 27: content_card}
+ss088: {24: content_card}
+ss099: {11: content_card}
+
+# --- Option A: detail-page action rows become tab_item --------------------
+# Trailer / Download / Watchlist / Share are an icon above a short label, which
+# is pixel-for-pixel the same shape as the bottom navigation bar items already
+# labelled tab_item (313 of those vs 105 buttons). The model cannot separate
+# them on appearance, so button was losing. Only these three rows match the
+# pattern; the other 95 button boxes are text-inside-a-box and stay button.
+ss002: {21: tab_item, 22: tab_item, 23: tab_item}
+ss011: {17: tab_item, 18: tab_item, 19: tab_item, 20: tab_item}
+ss043: {14: tab_item, 15: tab_item, 16: tab_item}
+
+# --- Pink "Free" ribbons mislabelled button -------------------------------
+# Identical ribbons elsewhere in the dataset are overlay_badge. Found while
+# checking the action rows; not part of Option A.
+ss021: {13: overlay_badge, 14: overlay_badge, 15: overlay_badge, 16: overlay_badge}
