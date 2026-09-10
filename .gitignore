@@ -30,3 +30,9 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+# --- Generated split configs -------------------------------------
+# split_dataset.py writes an absolute "path:" into these, so they are
+# machine-specific. The Colab notebook regenerates them; do not commit.
+config/ui.yaml
+config/folds/
