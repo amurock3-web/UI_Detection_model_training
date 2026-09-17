@@ -52,8 +52,9 @@ together.
 ```json
 {
   "version": "ui16_v1",
-  "trained": "2026-09-11",
-  "detector_repo_sha": "abc1234",
+  "trained": "2026-09-17",
+  "detector_repo_sha": "6bad3fd-dirty",
+  "source_run": "ui16_20260917_071603",
   "base_model": "yolov8s.pt",
   "classes": ["content_card", "tab_item", "..."],
   "imgsz": 1280,
@@ -64,13 +65,23 @@ together.
   "val_images": 20,
   "split_seed": 42,
   "augmentation": { "fliplr": 0.0, "hsv_h": 0.0, "mosaic": 0.3 },
+  "val_map50": 0.877,
+  "val_map50_95": 0.7029,
   "per_class_map50": {
-    "content_card": 0.87,
-    "rank_number": 0.11
+    "content_card": 0.931,
+    "rank_number": 0.620
   },
+  "instances_per_class": { "content_card": 677, "rank_number": 4 },
   "low_confidence_classes": ["rank_number", "text_input", "logo"]
 }
 ```
+
+`source_run`, `val_map50`, `val_map50_95` and `instances_per_class` are
+informational. `low_confidence_classes` is every class with fewer than
+`low_confidence_min_instances` (config/bundle.yaml, currently 10) labelled
+boxes. `detector_repo_sha` is the commit the run trained from; `-dirty` means
+the training checkout had a modified tracked file (on Colab this is the
+regenerated `classes_16.txt` line endings).
 
 Two fields the consumer must actually act on:
 
@@ -104,7 +115,7 @@ finished training anything.
 }
 ```
 
-`bbox` is `[x, y, width, height]` in pixels, top-left origin — matching the
+`bbox` is `[x, y, width, height]` in pixels (floats, 1 decimal), top-left origin, clipped to the image — matching the
 comparison repo's coordinate convention, not YOLO's normalized centre format.
 Convert here, once, rather than in both repos.
 

@@ -1,0 +1,12 @@
+# Bundle packaging settings — read by scripts/package_model.py.
+#
+# Kept apart from train.yaml because train.py passes every top-level key there
+# straight to ultralytics, which rejects keys it does not know.
+
+conf_default: 0.25       # operating point used by evaluate.py / error_analysis.py
+iou_default: 0.45        # NMS overlap; ultralytics' usual value for dense UI rows
+letterbox: true          # ultralytics pads to a square imgsz for predict; consumer must too
+
+# Classes with fewer labelled instances than this (across all 103 images) are
+# listed as low_confidence_classes: the consumer sends them to its VLM fallback.
+low_confidence_min_instances: 10
